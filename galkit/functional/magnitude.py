@@ -24,7 +24,7 @@ sdss_b : Dict[str, float]
 import math
 import numpy
 import torch
-from typing import Union
+from typing import Optional, Union
 
 sdss_b = {
     'u': 1.4e-10,
@@ -36,7 +36,7 @@ sdss_b = {
 
 def pogson_flux2mag(
     flux        : Union[numpy.ndarray, torch.Tensor], 
-    filter_band : str = None,
+    filter_band : Optional[str] = None,
     m0          : float = 22.5
 ) -> Union[numpy.ndarray, torch.Tensor]:
     """
@@ -47,7 +47,7 @@ def pogson_flux2mag(
     flux : Array, Tensor
         The flux of the object.
 
-    filter_band : str
+    filter_band : str, optional
         The filter band. Not used, but included for compatibility
         with sdss_flux2mag.
 
@@ -69,7 +69,7 @@ def pogson_flux2mag(
 
 def pogson_mag2flux(
     magnitude   : Union[numpy.ndarray, torch.Tensor], 
-    filter_band : str = None,
+    filter_band : Optional[str] = None,
     m0          : float = 22.5,
 ) -> Union[numpy.ndarray, torch.Tensor]:
     """
@@ -80,7 +80,7 @@ def pogson_mag2flux(
     magnitude : Array, Tensor
         The magnitude of the object.
 
-    filter_band : str
+    filter_band : str, optional
         The filter band. Not used, but included for compatibility
         with sdss_mag2flux.
 
