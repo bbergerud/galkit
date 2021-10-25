@@ -6,8 +6,8 @@ from the coordinate module.
 
 Implemented grids are pixel, pytorch, and normalized.
 
-Methods
--------
+Functions
+---------
 _parse_grid(grid, dense)
     Function for generating a sparse or dense grid representation
     of the base 1D tensors.

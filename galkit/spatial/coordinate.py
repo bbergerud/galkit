@@ -3,8 +3,8 @@ This module contains functions for dealing with the spatial coordinates
 in an image. It is primarily designed for dealing with projected disk
 geometries of galaxies.
 
-Methods
--------
+Functions
+---------
 cartesian(grid, h0, w0, scale, flip_lr, flip_ud)
     Generates a cartesian coordinate system based on the input grid and specified
     parameters.
