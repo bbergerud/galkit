@@ -267,8 +267,9 @@ def fits2jpeg(
 
         mask = imax > 255
         if mask.any():
+            mask = mask.repeat_interleave(3, 1)
             temp = image.clone()
-            temp[mask] = max_output / imax[mask]
+            temp[mask] =  temp[mask] * (255 / imax).repeat_interleave(3,1)[mask]
             temp = blur(temp)
             image[mask] = temp[mask]
 
