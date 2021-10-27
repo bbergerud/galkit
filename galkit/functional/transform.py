@@ -11,6 +11,14 @@ arcsinh_stretch(input, lower, upper, scale, eps)
 fits2jpeg(input, lower, upper, scale, gamma, gain, desaturate, 
           sharpen, kernel_size, kernel_sigma, max_output)
     Converts a FITS image into a JPEG image in a similar manner to the SDSS algorithm.
+
+normalize(input, loc, scale, eps)
+    Normalizes the input by subtracting off the mean and dividing by the
+    standard deviation. The resulting output is then multiplied by the
+    scale and shifted to have a mean `loc`.
+
+rescale(input, lower, upper)
+    Rescales the input to have values within the range [lower, upper]
 """
 import kornia
 import math
@@ -281,3 +289,91 @@ def fits2jpeg(
         image = image.squeeze(0)
 
     return image if is_tensor else image.numpy()
+
+def normalize(
+    input : Union[numpy.ndarray, torch.Tensor], 
+    loc   : float = 0, 
+    scale : float = 1, 
+    eps   : float = 1e-8
+) -> Union[numpy.ndarray, torch.Tensor]:
+    """
+    Normalizes the input by subtracting off the mean and dividing by the
+    standard deviation. The resulting output is then multiplied by the
+    scale and shifted to have a mean `loc`.
+
+    Parameters
+    ----------
+    input : array, tensor  
+        The input to normalize
+
+    loc : float
+        The mean of the normalized output. Default is 0.
+
+    scale : float
+        The "standard deviation" of the normalized output.
+        Default is 1.
+
+    eps : float
+        Padding factor to avoid division by zero
+
+    Returns
+    -------
+    output : array, tensor
+        The re-normalized input.
+
+    Examples
+    --------
+    import matplotlib.pyplot as plt
+    import torch
+    from galkit.functional.transform import normalize
+
+    sample = torch.randn(1000)
+    sample = normalize(sample, loc=85, scale=5)
+
+    fig, ax = plt.subplots()
+    ax.hist(sample.numpy())
+    fig.show()
+    """
+    norm = (input - input.mean()) / (input.std() + eps)
+    return norm * scale + loc
+
+def rescale(
+    input : Union[numpy.ndarray, torch.Tensor], 
+    lower : float, 
+    upper : float
+) -> Union[numpy.ndarray, torch.Tensor]:
+    """
+    Rescales the input to have values within the range [lower, upper]
+
+    Parameters
+    ----------
+    input : array, tensor  
+        The input to rescale.
+    
+    lower : float
+        The minimum value of the rescaled output.
+
+    upper : float
+        The maximum value of the rescaled output.
+
+    Returns
+    -------
+    output : array, tensor
+        The rescaled version of the input
+
+    Examples
+    --------
+    import matplotlib.pyplot as plt
+    import torch
+    from galkit.functional.transform import rescale
+
+    sample = torch.randn(1000)
+    sample = rescale(sample, lower=0.5, upper=1.5)
+
+    fig, ax = plt.subplots()
+    ax.hist(sample.numpy())
+    fig.show()
+    """
+    min = input.min()
+    max = input.max()
+    return (input - min) * (upper - lower) / (max - min) + lower
