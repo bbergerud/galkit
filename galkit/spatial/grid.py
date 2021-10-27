@@ -6,6 +6,21 @@ from the coordinate module.
 
 Implemented grids are pixel, pytorch, and normalized.
 
+Classes
+-------
+Grid
+    Interface to the base grid with methods for converting
+    from one coordinate system to another.
+
+NormalizedGrid
+    Interface to the normalized grid. Inherits the Grid class.
+
+PixelGrid
+    Interface to the pixel grid. Inherits the Grid class.
+
+PytorchGrid
+    Interface to the pytorch grid. Inherits the Grid class.
+
 Functions
 ---------
 _parse_grid(grid, dense)
@@ -18,6 +33,9 @@ normalized_grid(*shape, dense, device)
 
 normalized_to_pixel_grid(grid, shape)
     Converts a normalized grid to its pixel equivalent.
+
+normalized_to_pytorch_grid(grid, shape)
+    Converts a normalized grid to its pytorch equivalent.
 
 pixel_grid(*shape, dense, device)
     Returns the pixel coordinates of the image, with (0,0) corresponding to the
@@ -35,8 +53,12 @@ pytorch_grid(*shape, dense, device)
 
 pytorch_to_pixel_grid(grid, shape)
     Converts a pytorch grid to its pixel equivalent.
+
+pytorch_to_normalized_grid(grid, shape)
+    Converts a pytorch grid to its normalized equivalent.
 '''
 import torch
+from dataclasses import dataclass
 from typing import Optional, Tuple
 from ..utils import flatten
 
@@ -173,6 +195,38 @@ def normalized_to_pixel_grid(
     print(center_in_pixels)
     """
     return tuple(c*(s-1) for c,s in zip(grid, shape))
+
+def normalized_to_pytorch_grid(
+    grid  : Tuple[torch.Tensor],
+    shape : Tuple[int]
+) -> Tuple[torch.Tensor]:
+    """
+    Converts a normalized grid to its pytorch equivalent.
+
+    Parameters
+    ----------
+    grid: Tuple[Tensor]
+        An iterable object that contains the grid coordinates
+
+    shape: Tuple[int]
+        An iterable object that contains the grid dimensions
+
+    Returns
+    -------
+    grid : Tuple[Tensor]
+        A sequence of arrays representing the pytorch grid coordinates
+
+    Examples
+    --------
+    from galkit.spatial import grid
+
+    center = [0.5, 0.5]
+    shape  = (100, 100)
+
+    center_in_pixels = grid.normalized_to_pytorch_grid(grid=center, shape=shape)
+    print(center_in_pixels)
+    """
+    return tuple(2*c-1 for c,s in zip(grid, shape))
 
 def pixel_grid(
     *shape,
@@ -338,6 +392,38 @@ def pytorch_grid(
     grid  = tuple(torch.linspace(-1,1,s, device=device) for s in shape)
     return _parse_grid(grid, dense=dense)
 
+def pytorch_to_normalized_grid(
+    grid  : Tuple[torch.Tensor],
+    shape : Tuple[int]
+) -> Tuple[torch.Tensor]:
+    """
+    Converts a pytorch grid to its normalized equivalent.
+
+    Parameters
+    ----------
+    grid: Tuple[Tensor]
+        An iterable object that contains the grid coordinates
+
+    shape: Tuple[int]
+        An iterable object that contains the grid dimensions
+
+    Returns
+    -------
+    grid : Tuple[Tensor]
+        A sequence of tensors representing the normalized grid coordinates
+
+    Examples
+    --------
+    from galkit.spatial import grid
+
+    center = [0.0, 0.0]
+    shape  = (100, 100)
+
+    center_in_pixels = grid.pytorch_to_normalized_grid(grid=center, shape=shape)
+    print(center_in_pixels)
+    """
+    return tuple(0.5*(c+1) for c,s in zip(grid, shape))
+
 def pytorch_to_pixel_grid(
     grid  : Tuple[torch.Tensor],
     shape : Tuple[int]
@@ -355,7 +441,7 @@ def pytorch_to_pixel_grid(
 
     Returns
     -------
-    pixel_grid : Tuple[Tensor]
+    grid : Tuple[Tensor]
         A sequence of tensors representing the pixel grid coordinates
 
     Examples
@@ -369,3 +455,60 @@ def pytorch_to_pixel_grid(
     print(center_in_pixels)
     """
     return tuple((c/2+0.5)*(s-1) for c,s in zip(grid, shape))
+
+@dataclass
+class Grid:
+    """
+    Interface to the base grid with methods for converting
+    from one coordinate system to another.
+
+    Parameters
+    ----------
+    base_grid
+        A function for generating the base coordinate grid.
+
+    to_normalized_grid
+        A function that converts from the base coordinate
+        grid to the normalized coordinate grid.
+    
+    to_pixel_grid
+        A function that converts from the base coordinate
+        grid to the pixel coordinate grid.
+
+    to_pytorch_grid
+        A function that converts from the base coordinate
+        grid to the pytorch coordinate grid.
+
+    Methods
+    -------
+    __call__(self, *args, **kwargs)
+        Interface to the base_grid function.
+    """
+    base_grid          : callable
+    to_normalized_grid : callable
+    to_pixel_grid      : callable
+    to_pytorch_grid    : callable
+
+    def __call__(self, *args, **kwargs):
+        return self.base_grid(*args, **kwargs)
+
+class NormalizedGrid(Grid):
+    def __init__(self):
+        self.base_grid = normalized_grid
+        self.to_normalized_grid = lambda grid, shape: grid
+        self.to_pixel_grid = normalized_to_pixel_grid
+        self.to_pytorch_grid = normalized_to_pytorch_grid
+
+class PixelGrid(Grid):
+    def __init__(self):
+        self.base_grid = pixel_grid
+        self.to_normalized_grid = pixel_to_normalized_grid
+        self.to_pixel_grid = lambda grid, shape: grid
+        self.to_pytorch_grid = pixel_to_pytorch_grid
+
+class PytorchGrid(Grid):
+    def __init__(self):
+        self.base_grid = pixel_grid
+        self.to_normalized_grid = pytorch_to_normalized_grid
+        self.to_pixel_grid = pytorch_to_pixel_grid
+        self.to_pytorch_grid = lambda grid, shape: grid
