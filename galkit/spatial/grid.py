@@ -508,7 +508,7 @@ class PixelGrid(Grid):
 
 class PytorchGrid(Grid):
     def __init__(self):
-        self.base_grid = pixel_grid
+        self.base_grid = pytorch_grid
         self.to_normalized_grid = pytorch_to_normalized_grid
         self.to_pixel_grid = pytorch_to_pixel_grid
         self.to_pytorch_grid = lambda grid, shape: grid
