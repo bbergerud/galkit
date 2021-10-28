@@ -19,6 +19,11 @@ normalize(input, loc, scale, eps)
 
 rescale(input, lower, upper)
     Rescales the input to have values within the range [lower, upper]
+
+sigmoid(input, loc, scale)
+    Logistic sigmoid function,
+        output = 1 / (1 + exp(-z))
+    where z = (input - loc) / scale.
 """
 import kornia
 import math
@@ -377,3 +382,50 @@ def rescale(
     min = input.min()
     max = input.max()
     return (input - min) * (upper - lower) / (max - min) + lower
+
+def sigmoid(
+    input : torch.Tensor,
+    loc   : Union[float, torch.Tensor], 
+    scale : Union[float, torch.Tensor],
+) -> torch.Tensor:
+    """
+    Logistic sigmoid function,
+
+        output = 1 / (1 + exp(-z))
+    
+    where z = (input - loc) / scale.
+
+    Parameters
+    ----------
+    input : Tensor
+        The input tensor
+
+    loc : float, Tensor
+        Mean of the distribution
+
+    scale : float, Tensor
+        The scale of the distribution
+
+    Returns
+    -------
+    output : Tensor
+        The logistic probability
+
+    Examples
+    --------
+    import torch
+    from galkit.functional.transform import sigmoid
+
+    input = torch.zeros(3)
+    loc   = torch.Tensor([-0.1, 0.0, 1.0])
+    scale = torch.Tensor([0.5, 0.25, 0.15])
+
+    output = sigmoid(input, loc, scale)
+    print(output)
+    """
+    x = (input - loc) / scale
+
+    if isinstance(input, torch.Tensor):
+        return x.sigmoid()
+    else:
+        return 1 / (1 + numpy.exp(-x))
