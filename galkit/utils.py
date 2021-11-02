@@ -17,6 +17,9 @@ parse_parameter(input, length)
     Takes a value or list-like collection of values and parses
     the input to make sure it has the proper size.
 
+round_up_to_odd_integer(x)
+    Rounds the input up to the nearest odd integer.
+
 safe_divisor(input, buffer)
     Buffers the input by the specified amount. Where the input values
     are negative, the negative of the buffer factor is added.
@@ -145,6 +148,28 @@ def parse_parameter(
         return input
     else:
         return (input,) * length
+
+def round_up_to_odd_integer(x:float) -> int:
+    """
+    Rounds the input up to the nearest odd integer.
+
+    Parameters
+    ----------
+    x : int
+        The value to round.
+    
+    Returns
+    -------
+    output : float
+        The nearest integer rounded up.
+
+    Examples
+    --------
+    from galkit.utils import round_up_to_odd_integer
+
+    print(round_up_to_odd_integer(4.5))
+    """
+    return int(x+1) // 2 * 2 + 1
 
 def safe_divisor(
     input  : torch.Tensor,
