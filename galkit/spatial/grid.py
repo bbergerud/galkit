@@ -479,15 +479,30 @@ class Grid:
         A function that converts from the base coordinate
         grid to the pytorch coordinate grid.
 
+    from_normalized_grid
+        A function that converts from the normalized grid
+        to the base coordinate grid.
+
+    from_pixel_grid
+        A function that converts from the pixel grid
+        to the base coordinate grid.
+
+    from_pytorch_grid
+        A function that converts from the pytorch grid
+        to the base coordinate grid.
+
     Methods
     -------
     __call__(self, *args, **kwargs)
         Interface to the base_grid function.
     """
-    base_grid          : callable
-    to_normalized_grid : callable
-    to_pixel_grid      : callable
-    to_pytorch_grid    : callable
+    base_grid            : callable
+    to_normalized_grid   : callable
+    to_pixel_grid        : callable
+    to_pytorch_grid      : callable
+    from_normalized_grid : callable
+    from_pixel_grid      : callable
+    from_pytorch_grid    : callable
 
     def __call__(self, *args, **kwargs):
         return self.base_grid(*args, **kwargs)
@@ -498,6 +513,9 @@ class NormalizedGrid(Grid):
         self.to_normalized_grid = lambda grid, shape: grid
         self.to_pixel_grid = normalized_to_pixel_grid
         self.to_pytorch_grid = normalized_to_pytorch_grid
+        self.from_normalized_grid = lambda grid, shape: grid
+        self.from_pixel_grid = pixel_to_normalized_grid
+        self.from_pytorch_grid = pytorch_to_normalized_grid
 
 class PixelGrid(Grid):
     def __init__(self):
@@ -505,6 +523,9 @@ class PixelGrid(Grid):
         self.to_normalized_grid = pixel_to_normalized_grid
         self.to_pixel_grid = lambda grid, shape: grid
         self.to_pytorch_grid = pixel_to_pytorch_grid
+        self.from_normalized_grid = normalized_to_pixel_grid
+        self.from_pixel_grid = lambda grid, shape: grid
+        self.from_pytorch_grid = pytorch_to_pixel_grid
 
 class PytorchGrid(Grid):
     def __init__(self):
@@ -512,3 +533,6 @@ class PytorchGrid(Grid):
         self.to_normalized_grid = pytorch_to_normalized_grid
         self.to_pixel_grid = pytorch_to_pixel_grid
         self.to_pytorch_grid = lambda grid, shape: grid
+        self.from_normalized_grid = normalized_to_pytorch_grid
+        self.from_pixel_grid = pixel_to_pytorch_grid
+        self.from_pytorch_grid = lambda grid, shape: grid
