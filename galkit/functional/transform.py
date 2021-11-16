@@ -24,12 +24,17 @@ sigmoid(input, loc, scale)
     Logistic sigmoid function,
         output = 1 / (1 + exp(-z))
     where z = (input - loc) / scale.
+
+to_tricolor(input, palette, transform)
+    Converts a multichannels input into the tri-color image using
+    the provided palette. Useful for converting instance masks to
+    tri-color images.
 """
 import kornia
 import math
 import numpy
 import torch
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 def arcsinh_stretch(
     input : Union[numpy.ndarray, torch.Tensor],
@@ -429,3 +434,83 @@ def sigmoid(
         return x.sigmoid()
     else:
         return 1 / (1 + numpy.exp(-x))
+
+def to_tricolor(
+    input     : Union[numpy.ndarray, torch.Tensor],
+    palette   : List[Tuple[float,float,float]],
+    transform : Optional[callable] = None,
+):
+    """
+    Converts a multichannels input into the tri-color image using
+    the provided palette. Useful for converting instance masks to
+    tri-color images.
+
+    Parameters
+    ----------
+    input : Array, Tensor (C × H × W)
+        The input image.
+
+    palette : Tuple[float]
+        A tuple/list of RGB tuples. See seaborn.color_palette for
+        some good options.
+
+    transform : callable, optional
+        A transformation operation to apply to the input. If set
+        to `None`, then no tranformation is applied.
+
+    Returns
+    -------
+    output : Tensor (H × W × C)
+        The tri-color image.
+
+    Examples
+    --------
+    import math
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    import torch
+    from galkit.spatial import coordinate, grid
+    from galkit.functional import angular_distance, to_tricolor
+    
+    def θ_logarithmic(u, u0, α, φ):
+        return φ + (u - u0) / math.tan(α)
+
+    θ, r = coordinate.polar(
+        grid = grid.pytorch_grid(100,100),
+    )
+    u = r.add(0.01).log()
+
+    arms = []; n = 5
+    for i in range(n):
+        θ_spiral = θ_logarithmic(
+            u = u,
+            u0 = 0,
+            α = math.radians(15),
+            φ = math.pi + i*(2*math.pi / n)
+        )
+        arms.append(angular_distance(θ_spiral, θ))
+    arms = torch.cat(arms)
+
+    imag = to_tricolor(
+        input=arms,
+        palette=sns.color_palette('tab10'),
+        transform=lambda x: torch.exp(-(x/0.25)**2)
+    )
+
+    fig, ax = plt.subplots()
+    ax.imshow(imag)
+    fig.show()
+    """
+    if transform is not None:
+        input = transform(input)
+
+    is_tensor = isinstance(input, torch.Tensor)
+    if is_tensor:
+        palette = torch.as_tensor(palette, device=input.device, dtype=torch.float32)
+    else:
+        palette = numpy.asarray(palette)
+
+    output = 0
+    for i,p in zip(input, palette):
+        output = output + i[...,None] * (p.view(1,1,-1) if is_tensor else p.reshape(1,1,-1))
+    return output
