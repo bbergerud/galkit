@@ -142,14 +142,12 @@ def exponential_break(
     exp   = torch.exp if is_tensor else numpy.exp
     empty = torch.empty_like if is_tensor else numpy.empty_like
 
-    amplitude2 = amplitude*math.exp(breakpoint * (1/scale_outer - 1/scale_inner))
-
     mask_inner = r < breakpoint
     mask_outer = ~mask_inner
 
     flux = empty(r)
-    flux[mask_inner] = amplitude  * exp(-r[mask_inner] / scale_inner)
-    flux[mask_outer] = amplitude2 * exp(-r[mask_outer] / scale_outer)
+    flux[mask_inner] = amplitude * exp(-r[mask_inner] / scale_inner)
+    flux[mask_outer] = amplitude * exp(-r[mask_outer] / scale_outer + breakpoint * (1/scale_outer - 1/scale_inner))
 
     return flux
 
