@@ -456,7 +456,7 @@ def get_kernel2d(
     kernel = profile(r=r, x=x, y=y)
 
     if oversample > 1:
-        kernel = resample.downscale_local_mean(kernel.unsqueeze(0), oversample).squeeze()
+        kernel = resample.downscale_local_mean(kernel.unsqueeze(0), oversample).squeeze(0)
 
     return kernel / kernel.sum()
 
