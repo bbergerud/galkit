@@ -465,6 +465,8 @@ def get_kernel2d_fwhm(
     default_size : int = 4,
     device       : Optional[torch.device] = None,
     oversample   : int = 3,
+    min_kernel_size : Optional[int] = 3,
+    max_kernel_size : Optional[int] = 15,
 ):
     """
     Returns a 2D kernel representation of the provided profile
@@ -487,6 +489,12 @@ def get_kernel2d_fwhm(
     oversample : int
         The oversampling factor for constructing the kernel.
 
+    min_kernel_size : int, optional
+        The minimum kernel size to construct.
+
+    max_kernel_size : int, optional
+        The maximum kernel size to construct.
+
     Returns
     -------
     kernel : tensor (H × W)
@@ -506,4 +514,8 @@ def get_kernel2d_fwhm(
     fig.show()
     """
     ksize = round_up_to_odd_integer(profile.fwhm * default_size)
+    if min_kernel_size is not None:
+        ksize = max(min_kernel_size, ksize)
+    if max_kernel_size is not None:
+        ksize = min(max_kernel_size, ksize)
     return get_kernel2d(kernel_size=(ksize, ksize), profile=profile, device=device, oversample=oversample)
