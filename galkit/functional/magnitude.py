@@ -14,25 +14,12 @@ sdss_flux2mag(flux, filter_band)
 
 sdss_mag2flux(magnitude, filter_band)
     Converts arcsinh magnitudes to nanomaggies.
-
-Variables
-----------
-sdss_b : Dict[str, float]
-    Dictionary whose key represents the SDSS filter band and whose value
-    contains the `b` parameter used when constructing the arcsinh magnitude.
 """
 import math
 import numpy
 import torch
 from typing import Optional, Union
-
-sdss_b = {
-    'u': 1.4e-10,
-    'g': 0.9e-10,
-    'r': 1.2e-10,
-    'i': 1.8e-10,
-    'z': 7.4e-10,
-}
+from ..data.sdss.meta import sdss_b
 
 def pogson_flux2mag(
     flux        : Union[numpy.ndarray, torch.Tensor], 
