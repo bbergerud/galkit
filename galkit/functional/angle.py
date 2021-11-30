@@ -6,6 +6,9 @@ Functions
 angular_distance(x1, x2, absolute)
     Computes the angular distance between the azimuthal angles x1 and x2
 
+circular_mean(input, weights)
+    Computes the (weighted) circular mean of a collection of angles.
+
 mod_angle(θ, Δθ, deg)
     Adds the angles and returns the modulus such that -π ≤ θ < π
     for radians and -180° ≤ θ < 180° for degrees.
@@ -13,7 +16,7 @@ mod_angle(θ, Δθ, deg)
 import math
 import numpy
 import torch
-from typing import Union
+from typing import Optional, Union
 
 def angular_distance(
     x1       : Union[float, numpy.ndarray, torch.Tensor], 
@@ -64,6 +67,66 @@ def angular_distance(
     dz = atan2(sin(z), cos(z))
 
     return abs(dz) if absolute else dz
+
+def circular_mean(
+        input   : Union[numpy.ndarray, torch.Tensor],
+        weights : Optional[Union[numpy.ndarray, torch.Tensor]] = None,
+    ) -> float:
+    """
+    Computes the (weighted) circular mean of a collection of angles.
+
+    Parameters
+    ----------
+    input : array, tensor
+        Collection of angles (in radians) to average over.
+
+    weights : array, tensor, optional
+        Optional array of weights. If set to None, no weighting is applied.
+        Default is None.
+
+    Returns
+    -------
+    circular_mean : float
+        The (weighted) circular mean of the input angles, which is calculed as
+
+            x = sum(sin(input) * weights)
+            y = sum(cos(input) * weights)
+            output = arctan2(y, x)
+
+    Examples
+    --------
+    import matplotlib.pyplot as plt
+    import numpy
+    from galkit.functional.angle import circular_mean
+
+    n = 10
+    x = numpy.ones(n)
+    y = numpy.random.randn(n)
+    θ = numpy.arctan2(y, x)
+    r = numpy.ones(n)
+    w = numpy.random.rand(n)
+
+    c = circular_mean(θ, w)
+
+    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+    ax.scatter(θ, r, c=w, cmap=plt.cm.Blues, label='angles')
+    ax.scatter(c, 1, c='orange', label='circular mean')
+    ax.legend(loc='upper left')
+    fig.show()
+    """
+    is_tensor = isinstance(input, torch.Tensor)
+    cos = torch.cos if is_tensor else numpy.cos
+    sin = torch.sin if is_tensor else numpy.sin
+    atan = torch.atan2 if is_tensor else numpy.arctan2
+
+    x = cos(input)
+    y = sin(input)
+
+    if weights is not None:
+        x *= weights
+        y *= weights
+
+    return atan(sum(y), sum(x))
 
 def mod_angle(
     θ   : Union[float, numpy.ndarray, torch.Tensor], 
