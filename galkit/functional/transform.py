@@ -170,7 +170,8 @@ def fits2jpeg(
 
     gamma : float
         The color correction factor. If the flux has been converted to counts
-        via nMgyPerCount, then setting it to zero should be sufficient.
+        via nMgyPerCount, then setting it to zero should be sufficient. A value
+        of 0.1 is used in the SDSS code.
 
     gain : tuple, optional
         The gain factors for the r,g,b filters. Note that while the SDSS code
