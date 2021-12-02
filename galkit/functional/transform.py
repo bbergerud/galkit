@@ -142,8 +142,8 @@ def fits2jpeg(
     lower        : Union[callable, float] = 0.1,
     upper        : Union[callable, float] = 10000,
     scale        : Union[callable, float] = 6,
-    gamma        : Optional[Union[callable, tuple]] = None,
-    gain         : Optional[tuple] = None,
+    gamma        : Optional[Union[callable, float]] = None,
+    gain         : Optional[Union[callable, Tuple[float,float,float]]] = None,
     desaturate   : bool = False,
     sharpen      : bool = False,
     kernel_size  : Tuple[int,int] = (3,3),
@@ -168,16 +168,15 @@ def fits2jpeg(
     scale : callable, float
         The smoothing parameter.
 
-    gamma : float
+    gamma : callable, float, optional
         The color correction factor. If the flux has been converted to counts
         via nMgyPerCount, then setting it to zero should be sufficient. A value
         of 0.1 is used in the SDSS code.
 
-    gain : tuple, optional
-        The gain factors for the r,g,b filters. Note that while the SDSS code
-        uses gain=[0.9,1.1,1.8], if the flux has been converted to counts via
-        nMgyPerCount, then setting it to one should be sufficient. If set to
-        None, then no gain is applied. Default is None.
+    gain : callable, tuple, optional
+        The gain factors for the r,g,b filters. Note that the SDSS code
+        uses gain=[0.9,1.1,1.8]. If set to None, then no gain is applied.
+        Default is None.
 
     desaturate : bool
         Boolean indicating to apply a convolution to smooth out the saturated
@@ -264,6 +263,8 @@ def fits2jpeg(
     image = image * scale
 
     if gain is not None:
+        if callable(gain):
+            gain = gain()
         gain = torch.as_tensor(gain, device=image.device).float().view(1,-1,1,1)
         image = image * gain
 
@@ -276,6 +277,8 @@ def fits2jpeg(
         )
 
     if gamma is not None:
+        if callable(gamma):
+            gamma = gamma()
         image[:,0] += gamma * (image[:,0] - image[:,1])     # Δred
         image[:,2] += gamma * (image[:,2] - image[:,1])     # Δblue
 
