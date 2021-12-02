@@ -3,7 +3,10 @@ Functions that perform basic operations for parsing data.
 
 Classes
 -------
-HiddenPrints()
+FunctionWrapper
+    Function wrapper that stores default parameter values.
+
+HiddenPrints
     Method for preventing a function from printing values to the terminal.
 
 Methods
@@ -35,6 +38,51 @@ import os, sys
 import numpy
 import torch
 from typing import Generator, Iterable, Optional, Tuple, Union
+
+class FunctionWrapper:
+    """
+    Function wrapper that stores default parameter values.
+
+    Attributes
+    ----------
+    function : callable
+        The function to wrap.
+
+    kwargs
+        Additional keyword arguments to pass into the function
+        upon calling.
+
+    Methods
+    -------
+    __call__(*args, **kwargs)
+        Interface to the function __call__ method. The arguments
+        stored in the attribute `kwargs` are alse passed.
+    """
+    def __init__(self, function:callable, **kwargs):
+        """
+        Parameters
+        ----------
+        function : callable
+            The function to wrap.
+
+        **kwargs
+            Additional keyword arguments to pass into the function
+            upon calling.
+        """
+        self.function = function
+        self.kwargs = kwargs
+    
+    def __call__(self, *args, **kwargs):
+        """
+        Interface to the function __call__ method. The arguments
+        stored in the attribute `kwargs` are alse passed.
+
+        Parameters
+        ----------
+        *args, **kwargs
+            Additional arguments to pass into the function.      
+        """
+        return self.function(*args, **kwargs, **self.kwargs)
 
 class HiddenPrints:
     """
