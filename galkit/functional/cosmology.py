@@ -90,7 +90,7 @@ def redshift_image(
     d_i = get_distance_Mpc(z_in, cosmology)
     d_o = get_distance_Mpc(z_out, cosmology)
     
-    flux_scale   = ((1 + z_in) / (1 + z_out))**4
+    flux_scale   = d_i**2 / d_o**2
     image_scale  = (d_i / (1 + z_in)**2) / (d_o / (1 + z_out)**2)
     kernel_fwhm  = (seeing / plate_scale) * (1 - image_scale**2)**0.5
     kernel_sigma = Gaussian.fwhm2std(kernel_fwhm)
