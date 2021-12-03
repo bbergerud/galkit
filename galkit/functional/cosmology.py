@@ -118,6 +118,6 @@ def redshift_image(
         output = gaussian_blur2d(output, kernel_size=kernel_size, sigma=sigma)
 
     if ndim == 3:
-        input = input.squeeze(0)
+        output = output.squeeze(0)
     
     return output if is_tensor else output.numpy()
