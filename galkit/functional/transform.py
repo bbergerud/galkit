@@ -142,10 +142,10 @@ def fits2jpeg(
     lower        : Union[callable, float] = 0.1,
     upper        : Union[callable, float] = 10000,
     scale        : Union[callable, float] = 6,
-    gamma        : Optional[Union[callable, float]] = None,
-    gain         : Optional[Union[callable, Tuple[float,float,float]]] = None,
+    gamma        : Optional[Union[callable, float]] = 0.1,
+    gain         : Optional[Union[callable, Tuple[float,float,float]]] = (0.9, 1.1, 1.8),
     desaturate   : bool = False,
-    sharpen      : bool = False,
+    sharpen      : bool = True,
     kernel_size  : Tuple[int,int] = (3,3),
     kernel_sigma : Tuple[float,float] = (1,1),
     max_output   : float = 1,
@@ -176,14 +176,13 @@ def fits2jpeg(
     gain : callable, tuple, optional
         The gain factors for the r,g,b filters. Note that the SDSS code
         uses gain=[0.9,1.1,1.8]. If set to None, then no gain is applied.
-        Default is None.
 
     desaturate : bool
         Boolean indicating to apply a convolution to smooth out the saturated
         regions. Default is False.
 
     sharpen : bool
-        Boolean indicating to apply an unsharp mask. Default is False.
+        Boolean indicating to apply an unsharp mask.
 
     kernel_size : Tuple[int,int]
         The kernel size of the convolution in pixels. Defaults is (3,3).
