@@ -11,6 +11,9 @@ HiddenPrints
 
 Methods
 -------
+get_basenames(directory)
+    Returns a list of the basenames of all the files in a directory.
+
 flatten(items, *exceptions)
     Takes a list of objects and returns a generator containg the flattened
     expression. Any dictionary objects are set to return the values rather
@@ -37,6 +40,7 @@ unravel_index(index, shape)
 import os, sys
 import numpy
 import torch
+from pathlib import Path
 from typing import Generator, Iterable, Optional, Tuple, Union
 
 class FunctionWrapper:
@@ -106,6 +110,18 @@ class HiddenPrints:
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stdout.close()
         sys.stdout = self._original_stdout
+
+def get_basenames(directory:Union[str,Path]):
+    """
+    Returns a list of the basenames of all the files in a directory.
+
+    Parameters
+    ----------
+    directory : str, Path
+        The path to the directory.
+    """
+    files = os.listdir(directory)
+    return [Path(f).stem for f in files]
 
 def flatten(
         items:Iterable, 
