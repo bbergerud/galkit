@@ -17,8 +17,7 @@ normalize(input, loc, scale, eps)
     standard deviation. The resulting output is then multiplied by the
     scale and shifted to have a mean `loc`.
 
-
- mask_from_unique(input)
+mask_from_unique(input)
     Generates separate masks for each of the unique values in the input.
     The lowest unique value is ignored as it is assumed that it represents
     background pixels.
