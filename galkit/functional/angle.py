@@ -71,6 +71,7 @@ def angular_distance(
 def circular_mean(
         input   : Union[numpy.ndarray, torch.Tensor],
         weights : Optional[Union[numpy.ndarray, torch.Tensor]] = None,
+        power   : Optional[float] = None
     ) -> float:
     """
     Computes the (weighted) circular mean of a collection of angles.
@@ -100,13 +101,13 @@ def circular_mean(
     from galkit.functional.angle import circular_mean
 
     n = 10
-    x = numpy.ones(n)
-    y = numpy.random.randn(n)
+    x = numpy.random.randn(n)
+    y = 10*numpy.random.randn(n)
     θ = numpy.arctan2(y, x)
     r = numpy.ones(n)
     w = numpy.random.rand(n)
 
-    c = circular_mean(θ, w)
+    c = circular_mean(θ, None, power=2)
 
     fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
     ax.scatter(θ, r, c=w, cmap=plt.cm.Blues, label='angles')
@@ -118,6 +119,22 @@ def circular_mean(
     cos = torch.cos if is_tensor else numpy.cos
     sin = torch.sin if is_tensor else numpy.sin
     atan = torch.atan2 if is_tensor else numpy.arctan2
+    sum = torch.sum if is_tensor else numpy.sum
+
+    v = cos(input) + 1j*sin(input)
+
+    if power is not None:
+        v = v**power
+
+    if weights is not None:
+        v = v * weights
+
+    angle = sum(v)
+
+    if power is not None:
+        angle = angle**(1/power)
+
+    return atan(angle.imag, angle.real)
 
     x = cos(input)
     y = sin(input)
