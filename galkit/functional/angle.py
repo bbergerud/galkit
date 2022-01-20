@@ -85,14 +85,19 @@ def circular_mean(
         Optional array of weights. If set to None, no weighting is applied.
         Default is None.
 
+    power : float, optional
+        A power factor to weight the inputs by. If there is 180° symmetry,
+        then setting power=2 will cause the mean of π/2 and -π/2 to point
+        along the same (y) axis.
+
     Returns
     -------
     circular_mean : float
         The (weighted) circular mean of the input angles, which is calculed as
 
-            x = sum(sin(input) * weights)
-            y = sum(cos(input) * weights)
-            output = arctan2(y, x)
+            z = cos(input) + 1j⋅sin(input)
+            z = sum(weight*(z**power))**(1/power)
+            output =arctan2(z.imag, z.real)
 
     Examples
     --------
@@ -101,13 +106,13 @@ def circular_mean(
     from galkit.functional.angle import circular_mean
 
     n = 10
-    x = numpy.random.randn(n)
-    y = 10*numpy.random.randn(n)
+    x = numpy.ones(n)
+    y = numpy.random.randn(n)
     θ = numpy.arctan2(y, x)
     r = numpy.ones(n)
     w = numpy.random.rand(n)
 
-    c = circular_mean(θ, None, power=2)
+    c = circular_mean(θ, w)
 
     fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
     ax.scatter(θ, r, c=w, cmap=plt.cm.Blues, label='angles')
@@ -135,15 +140,6 @@ def circular_mean(
         angle = angle**(1/power)
 
     return atan(angle.imag, angle.real)
-
-    x = cos(input)
-    y = sin(input)
-
-    if weights is not None:
-        x *= weights
-        y *= weights
-
-    return atan(sum(y), sum(x))
 
 def mod_angle(
     θ   : Union[float, numpy.ndarray, torch.Tensor], 
