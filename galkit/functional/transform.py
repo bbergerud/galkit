@@ -17,6 +17,12 @@ normalize(input, loc, scale, eps)
     standard deviation. The resulting output is then multiplied by the
     scale and shifted to have a mean `loc`.
 
+
+ mask_from_unique(input)
+    Generates separate masks for each of the unique values in the input.
+    The lowest unique value is ignored as it is assumed that it represents
+    background pixels.
+
 rescale(input, lower, upper)
     Rescales the input to have values within the range [lower, upper]
 
@@ -302,6 +308,28 @@ def fits2jpeg(
         image = image.squeeze(0)
 
     return image if is_tensor else image.numpy()
+
+def mask_from_unique(
+    input : Union[numpy.ndarray, torch.Tensor],
+) -> Union[numpy.ndarray, torch.Tensor]:
+    """
+    Generates separate masks for each of the unique values in the input.
+    The lowest unique value is ignored as it is assumed that it represents
+    background pixels.
+
+    Parameters
+    ----------
+    input : array, tensor (H × W)
+        The input mask, where each mask is denoted by a unique value.
+
+    Returns
+    -------
+    output : array, tensor (C × H × W)
+        The new masks where the channels represents the mask for each
+        instance.
+    """
+    unique = torch.unique if isinstance(input, torch.Tensor) else numpy.unique
+    return input[None] == unique(input)[1:].reshape(-1,1,1)
 
 def normalize(
     input : Union[numpy.ndarray, torch.Tensor], 
