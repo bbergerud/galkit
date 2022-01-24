@@ -21,10 +21,12 @@ from typing import Optional, Union
 def angular_distance(
     x1       : Union[float, numpy.ndarray, torch.Tensor], 
     x2       : Union[float, numpy.ndarray, torch.Tensor], 
-    absolute : bool = True
+    absolute : bool = True,
+    power    : Optional[float] = None,
 ) -> Union[float, numpy.ndarray, torch.Tensor]:
     """
     Computes the angular distance between the azimuthal angles x1 and x2
+    where the second angle serves as the reference.
 
     Parameters
     ----------
@@ -32,12 +34,17 @@ def angular_distance(
         The first set of azimuthal angles in radians.
 
     x2 : float, array, tensor
-        The second set of azimuthal angles in radians.
+        The reference set of azimuthal angles in radians.
 
     absolute : bool
         Boolean indicating whether to return the absolute value of
         the angular distance (True) or the signed difference (False).
         Default is True.
+
+    power : float, optional
+        A power factor to weight the inputs by. If there is 180° symmetry,
+        then setting power=2 will cause the mean of π/2 and -π/2 to point
+        along the same (y) axis.
 
     Returns
     -------
@@ -50,23 +57,23 @@ def angular_distance(
     from math import pi
     from galkit.functional.angle import angular_distance
 
-    n  = 5
-    x1 = torch.ones(n) * pi
-    x2 = torch.linspace(-pi, pi, n)
-    Δθ = angular_distance(x1, x2)
+    n  = 9
+    x1 = torch.linspace(-pi, pi, n)
+    x2 = torch.zeros(n)
+    Δθ = angular_distance(x1, x2, absolute=False)
 
     for i,j,k in zip(x1, x2, Δθ):
         print(f'Δθ({i},{j}) = {k}')
     """
     is_tensor = isinstance(x1, torch.Tensor) or isinstance(x2, torch.Tensor)
-    sin   = torch.sin if is_tensor else numpy.sin
-    cos   = torch.cos if is_tensor else numpy.cos
-    atan2 = torch.atan2 if is_tensor else numpy.arctan2
+    exp = torch.exp if is_tensor else numpy.exp
+    to_angle = torch.angle if is_tensor else numpy.angle
 
-    z  = x1 - x2
-    dz = atan2(sin(z), cos(z))
+    z = exp(1j*(x1-x2))
+    z = to_angle(z if power is None else z**power)
+    z = abs(z) if absolute else z
+    return z if power is None else (z/power)
 
-    return abs(dz) if absolute else dz
 
 def circular_mean(
         input   : Union[numpy.ndarray, torch.Tensor],
@@ -121,12 +128,11 @@ def circular_mean(
     fig.show()
     """
     is_tensor = isinstance(input, torch.Tensor)
-    cos = torch.cos if is_tensor else numpy.cos
-    sin = torch.sin if is_tensor else numpy.sin
-    atan = torch.atan2 if is_tensor else numpy.arctan2
+    exp = torch.exp if is_tensor else numpy.exp
+    to_angle = torch.angle if is_tensor else numpy.angle
     sum = torch.sum if is_tensor else numpy.sum
 
-    v = cos(input) + 1j*sin(input)
+    v = exp(1j*input)
 
     if power is not None:
         v = v**power
@@ -139,7 +145,7 @@ def circular_mean(
     if power is not None:
         angle = angle**(1/power)
 
-    return atan(angle.imag, angle.real)
+    return to_angle(angle)
 
 def mod_angle(
     θ   : Union[float, numpy.ndarray, torch.Tensor], 
