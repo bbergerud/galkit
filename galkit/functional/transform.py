@@ -122,14 +122,14 @@ def arcsinh_stretch(
     ndim = input.ndim
 
     kwargs = {
-        'input' if is_tensor else 'a'  : input.flatten(1),
+        'input' if is_tensor else 'a'  : input.reshape(input.shape[0], -1),
         'dim' if is_tensor else 'axis' : 1 if ndim == 4 else None,
     }
 
     lower = 0 if lower is None else quantile(q = lower() if callable(lower) else lower, **kwargs)
     if upper is None:
         if ndim == 4:
-            upper = input.flatten(1).max(1)
+            upper = input.reshape(input.shape[0], -1).max(1)
             if is_tensor:
                 upper = upper.values
         else:
