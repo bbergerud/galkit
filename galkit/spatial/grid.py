@@ -60,7 +60,7 @@ pytorch_to_normalized_grid(grid, shape)
 import numpy
 import torch
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 from ..utils import flatten
 
 def _parse_grid(
@@ -295,22 +295,22 @@ def pixel_grid(
 def pixel_to_normalized_grid(
     grid  : List[Union[numpy.ndarray, torch.Tensor]],
     shape : List[int]
-) -> Tuple[torch.Tensor]:
+) -> List[Union[numpy.ndarray, torch.Tensor]]:
     """
     Converts a pixel grid to its normalized equivalent.
 
     Parameters
     ----------
-    grid: Tuple[Tensor]
+    grid: List[array, Tensor]
         An iterable object that contains the grid coordinates
 
-    shape: Tuple[int]
+    shape: List[int]
         An iterable object that contains the grid dimensions
 
     Returns
     -------
-    grid : Tuple[Tensor]
-        A sequence of arrays representing the normalized grid coordinates
+    grid : List[Array, Tensor]
+        A sequence of arrays or tensors representing the normalized grid coordinates
 
     Examples
     --------
