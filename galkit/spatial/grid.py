@@ -25,9 +25,9 @@ Functions
 ---------
 _parse_grid(grid, dense)
     Function for generating a sparse or dense grid representation
-    of the base 1D tensors.
+    of the base 1D arrays of tensors.
 
-normalized_grid(*shape, dense, device)
+normalized_grid(*shape, dense, device, tensor)
     Returns the pixel coordinates of the image normalized so that the top left
     is (0,0) and the bottom right is (+1,+1).
 
@@ -37,7 +37,7 @@ normalized_to_pixel_grid(grid, shape)
 normalized_to_pytorch_grid(grid, shape)
     Converts a normalized grid to its pytorch equivalent.
 
-pixel_grid(*shape, dense, device)
+pixel_grid(*shape, dense, device, tensor)
     Returns the pixel coordinates of the image, with (0,0) corresponding to the
     top left.
 
@@ -47,7 +47,7 @@ pixel_to_normalized_grid(grid, shape)
 pixel_to_pytorch_grid(grid, shape)
     Converts a pixel grid to its pytorch equivalent.
 
-pytorch_grid(*shape, dense, device)
+pytorch_grid(*shape, dense, device, tensor)
     Returns the pixel coordinates of the image normalized so that the top left
     is (-1,-1) and the bottom right (+1,+1).
 
@@ -57,23 +57,24 @@ pytorch_to_pixel_grid(grid, shape)
 pytorch_to_normalized_grid(grid, shape)
     Converts a pytorch grid to its normalized equivalent.
 '''
+import numpy
 import torch
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple, Union
 from ..utils import flatten
 
 def _parse_grid(
-    grid  : Tuple[torch.Tensor], 
+    grid  : List[Union[numpy.ndarray, torch.Tensor]], 
     dense : bool
-) -> Tuple[torch.Tensor]:
+) -> List[Union[numpy.ndarray, torch.Tensor]]:
     """
     Function for generating a sparse or dense grid representation
-    of the base 1D tensors.
+    of the base 1D arrays of tensors.
 
     Parameters
     ----------
-    grid : Tuple[Tensor]
-        A sequence of 1D tensors containing the grid values along
+    grid : List[array, tensor]
+        A sequence of 1D arrays or tensors containing the grid values along
         each dimension.
 
     dense : bool
@@ -82,10 +83,10 @@ def _parse_grid(
 
     Returns
     -------
-    grid : Tuple[Tensors]
-        The sparse or dense representation of the input tensors. An additional
-        dimension has been added to the beginning of each tensor to represent
-        the channels.
+    grid : List[array, tensor]
+        The sparse or dense representation of the input tensors / arrays. An
+        additional dimension has been added to the beginning of each tensor to
+        represent the channels.
 
     Examples
     --------
@@ -106,20 +107,21 @@ def _parse_grid(
         print(gi.shape)
     """
     if dense:
-        grid = torch.meshgrid(*grid)
+        grid = (torch.meshgrid if isinstance(grid[0], torch.Tensor) else numpy.meshgrid)(*grid)
     else:
         n = len(grid)
         grid = tuple(
-            t.view(*(-1 if j==i else 1 for j in range(n)))
+            t.reshape(*(-1 if j==i else 1 for j in range(n)))
             for i,t in enumerate(grid)
         )
-    return tuple(t.unsqueeze(0) for t in grid)
+    return tuple(t[None] for t in grid)
 
 def normalized_grid(
     *shape,
     dense  : bool = False,
     device : Optional[torch.device] = None,
-) -> Tuple[torch.Tensor]:
+    tensor : bool = True,
+) -> List[Union[numpy.ndarray, torch.Tensor]]:
     """
     Returns the pixel coordinates of the image normalized so that the top left
     is (0,0) and the bottom right is (+1,+1).
@@ -135,20 +137,24 @@ def normalized_grid(
         or the sparse representation (False).
 
     device : torch.device
-        The device to generate the tensors on.
+        The device to generate the tensors on. Only applicable if tensor is True.
+
+    tensor : bool
+        Boolean indicating whether to generate pytorch tensors (True) or numpy
+        arrays (False).
 
     Returns
     -------
-    grid : Tuple[Tensors]
-        A sequence of arrays representing the grid coordinates
+    grid : List[Array, Tensor]
+        A sequence of arrays or tensors representing the grid coordinates
 
     Examples
     --------
     from galkit.spatial import grid
     import matplotlib.pyplot as plt
 
-    h, w = grid.normalized_grid(100, 100, dense=True)
-    x, y, z = grid.normalized_grid(100, 100, 100, dense=False)
+    h, w = grid.normalized_grid(100, 100, tensor=True, dense=True)
+    x, y, z = grid.normalized_grid(100, 100, 100, tensor=True, dense=False)
 
     fig, ax = plt.subplots(ncols=2)
     c0 = ax[0].imshow(h[0])
@@ -160,28 +166,30 @@ def normalized_grid(
 
     print(x.shape, y.shape, z.shape)
     """
+    linspace = torch.linspace if tensor else numpy.linspace
+    kwargs = {'device': device} if tensor else {}
     shape = tuple(flatten(shape))
-    grid  = tuple(torch.linspace(0,1,s,device=device) for s in shape)
+    grid  = tuple(linspace(0,1,s,**kwargs) for s in shape)
     return _parse_grid(grid=grid, dense=dense)
 
 def normalized_to_pixel_grid(
-    grid  : Tuple[torch.Tensor],
-    shape : Tuple[int]
-) -> Tuple[torch.Tensor]:
+    grid  : List[Union[numpy.ndarray, torch.Tensor]],
+    shape : List[int]
+) -> List[Union[numpy.ndarray, torch.Tensor]]:
     """
     Converts a normalized grid to its pixel equivalent.
 
     Parameters
     ----------
-    grid: Tuple[Tensor]
+    grid: List[Array, Tensor]
         An iterable object that contains the grid coordinates
 
-    shape: Tuple[int]
+    shape: List[int]
         An iterable object that contains the grid dimensions
 
     Returns
     -------
-    grid : Tuple[Tensor]
+    grid : List[Array, Tensor]
         A sequence of arrays representing the pixel grid coordinates
 
     Examples
@@ -197,9 +205,9 @@ def normalized_to_pixel_grid(
     return tuple(c*(s-1) for c,s in zip(grid, shape))
 
 def normalized_to_pytorch_grid(
-    grid  : Tuple[torch.Tensor],
-    shape : Tuple[int]
-) -> Tuple[torch.Tensor]:
+    grid  : List[Union[numpy.ndarray, torch.Tensor]],
+    shape : List[int]
+) -> List[Union[numpy.ndarray, torch.Tensor]]:
     """
     Converts a normalized grid to its pytorch equivalent.
 
@@ -213,8 +221,8 @@ def normalized_to_pytorch_grid(
 
     Returns
     -------
-    grid : Tuple[Tensor]
-        A sequence of arrays representing the pytorch grid coordinates
+    grid : List[Array, Tensor]
+        A sequence of arrays or tensors representing the pytorch grid coordinates
 
     Examples
     --------
@@ -232,7 +240,8 @@ def pixel_grid(
     *shape,
     dense  : bool = False,
     device : Optional[torch.device] = None,
-) -> Tuple[torch.Tensor]:
+    tensor : bool = True,
+) -> List[Union[numpy.ndarray, torch.Tensor]]:
     """
     Returns the pixel coordinates of the image, with (0,0) corresponding to the
     top left.
@@ -248,12 +257,16 @@ def pixel_grid(
         or the sparse representation (False).
 
     device : torch.device
-        The device to generate the tensors on.
+        The device to generate the tensors on. Only applicable if tensor is True.
+
+    tensor : bool
+        Boolean indicating whether to generate pytorch tensors (True) or numpy
+        arrays (False).
 
     Returns
     -------
-    grid : Tuple[Tensors]
-        A sequence of arrays representing the grid coordinates
+    grid : List[Array, Tensor]
+        A sequence of arrays or tensors representing the grid coordinates
 
     Examples
     --------
@@ -273,13 +286,15 @@ def pixel_grid(
 
     print(x.shape, y.shape, z.shape)
     """
+    arange = torch.arange if tensor else numpy.arange
+    kwargs = {'device': device} if tensor else {}
     shape = tuple(flatten(shape))
-    grid  = tuple(torch.arange(s, device=device) for s in shape)
+    grid  = tuple(arange(s, **kwargs) for s in shape)
     return _parse_grid(grid, dense=dense)
 
 def pixel_to_normalized_grid(
-    grid  : Tuple[torch.Tensor],
-    shape : Tuple[int]
+    grid  : List[Union[numpy.ndarray, torch.Tensor]],
+    shape : List[int]
 ) -> Tuple[torch.Tensor]:
     """
     Converts a pixel grid to its normalized equivalent.
@@ -310,18 +325,18 @@ def pixel_to_normalized_grid(
     return tuple(x/(s-1) for x,s in zip(grid, shape))
 
 def pixel_to_pytorch_grid(
-    grid  : Tuple[torch.Tensor],
-    shape : Tuple[int]
-) -> Tuple[torch.Tensor]:
+    grid  : List[Union[numpy.ndarray, torch.Tensor]],
+    shape : List[int]
+) -> List[Union[numpy.ndarray, torch.Tensor]]:
     """
     Converts a pixel grid to its pytorch equivalent.
 
     Parameters
     ----------
-    grid: Tuple[Tensor]
+    grid: List[Array, Tensor]
         An iterable object that contains the grid coordinates
 
-    shape: Tuple[int]
+    shape: List[int]
         An iterable object that contains the grid dimensions
 
     Returns
@@ -345,14 +360,15 @@ def pytorch_grid(
     *shape, 
     dense  : bool = False,
     device : Optional[torch.device] = None,
-) -> Tuple[torch.Tensor]:
+    tensor : bool = True,
+) -> List[Union[numpy.ndarray, torch.Tensor]]:
     """
     Returns the pixel coordinates of the image normalized so that the top left
     is (-1,-1) and the bottom right (+1,+1).
 
     Parameters
     ----------
-    shape : Iterable[ints]
+    shape : Iterable[int]
         A collection of integer objects representing the shape parameters. Can
         be a list-like collection or a sequence of integer inputs.
 
@@ -361,12 +377,16 @@ def pytorch_grid(
         specified by shape, or to return a sparse representation. Default is False.
 
     device : torch.device
-        The device to generate the tensors on.
+        The device to generate the tensors on. Only applicable if tensor is True.
+
+    tensor : bool
+        Boolean indicating whether to generate pytorch tensors (True) or numpy
+        arrays (False).
 
     Returns
     -------
-    grid : Tuple[Tensor]
-        A sequence of Tensors representing the grid coordinates.
+    grid : List[Array, Tensor]
+        A sequence of arrays or tensors representing the grid coordinates.
 
     Examples
     --------
@@ -388,14 +408,16 @@ def pytorch_grid(
     for a in (x,y,z):
         print(a.shape)
     """
+    linspace = torch.linspace if tensor else numpy.linspace
+    kwargs = {'device': device} if tensor else {}
     shape = tuple(flatten(shape))
-    grid  = tuple(torch.linspace(-1,1,s, device=device) for s in shape)
+    grid  = tuple(linspace(-1,1,s,**kwargs) for s in shape)
     return _parse_grid(grid, dense=dense)
 
 def pytorch_to_normalized_grid(
-    grid  : Tuple[torch.Tensor],
-    shape : Tuple[int]
-) -> Tuple[torch.Tensor]:
+    grid  : List[Union[numpy.ndarray, torch.Tensor]],
+    shape : List[int]
+) -> List[Union[numpy.ndarray, torch.Tensor]]:
     """
     Converts a pytorch grid to its normalized equivalent.
 
@@ -425,18 +447,18 @@ def pytorch_to_normalized_grid(
     return tuple(0.5*(c+1) for c,s in zip(grid, shape))
 
 def pytorch_to_pixel_grid(
-    grid  : Tuple[torch.Tensor],
-    shape : Tuple[int]
-) -> Tuple[torch.Tensor]:
+    grid  : List[Union[numpy.ndarray, torch.Tensor]],
+    shape : List[int]
+) -> List[Union[numpy.ndarray, torch.Tensor]]:
     """
     Converts a pytorch grid to its pixel equivalent.
 
     Parameters
     ----------
-    grid: Tuple[Tensor]
+    grid: List[Array, Tensor]
         An iterable object that contains the grid coordinates
 
-    shape: Tuple[int]
+    shape: List[int]
         An iterable object that contains the grid dimensions
 
     Returns
