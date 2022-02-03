@@ -107,7 +107,10 @@ def _parse_grid(
         print(gi.shape)
     """
     if dense:
-        grid = (torch.meshgrid if isinstance(grid[0], torch.Tensor) else numpy.meshgrid)(*grid)
+        if isinstance(grid[0], torch.Tensor):
+            grid = torch.meshgrid(*grid)
+        else:
+            grid = numpy.meshgrid(*grid, indexing='ij')
     else:
         n = len(grid)
         grid = tuple(
@@ -153,7 +156,7 @@ def normalized_grid(
     from galkit.spatial import grid
     import matplotlib.pyplot as plt
 
-    h, w = grid.normalized_grid(100, 100, tensor=True, dense=True)
+    h, w = grid.normalized_grid(100, 100, tensor=False, dense=True)
     x, y, z = grid.normalized_grid(100, 100, 100, tensor=True, dense=False)
 
     fig, ax = plt.subplots(ncols=2)
