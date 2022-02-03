@@ -41,39 +41,44 @@ q_correction(q, q0, device)
     Computes the ellipsoidally corrected value (q')² ≡ cos²(i) = [(b/a)² - q0²] / [1 - q0²]
     where q ≡ b/a is the observed semi-minor to semi-major axis ratio.
 '''
-
+import numpy
 import torch
-from typing import Optional, Tuple
-from ..utils import to_tensor, safe_divisor
+from typing import Optional, Tuple, Union
+from ..utils import safe_divisor
+
+def to_type(input, target, view=(-1,1,1)):
+    dtype = None if isinstance(target, (int,float)) else target.dtype
+    if isinstance(target, torch.Tensor):
+        output = torch.as_tensor(input, dtype=dtype, device=target.device)
+    else:
+        output = numpy.asarray(input, dtype=dtype)
+    return output if view is None else output.reshape(view)
 
 def cartesian(
-    grid    : Tuple[torch.Tensor, torch.Tensor], 
-    h0      : Optional[torch.Tensor] = None, 
-    w0      : Optional[torch.Tensor] = None, 
-    scale   : Optional[torch.Tensor] = None, 
+    grid    : Union[Tuple[numpy.ndarray, numpy.ndarray], Tuple[torch.Tensor, torch.Tensor]], 
+    h0      : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None, 
+    w0      : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None, 
+    scale   : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None, 
     flip_lr : bool = True, 
     flip_ud : bool = False,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> Union[Tuple[numpy.ndarray, numpy.ndarray], Tuple[torch.Tensor, torch.Tensor]]:
     """
     Generates a cartesian coordinate system based on the input grid and specified
     parameters.
 
     Parameters
     ----------
-    grid : Tuple[Tensor, Tensor]
+    grid : Tuple[array/tensor, array/tensor]
         Iterable containing the (h,w) coordinates of the grid system.
 
-    h0: Tensor, optional
-        The height (vertical) center coordinate in the grid system. If not a
-        tensor, it will be converted to one.
+    h0: float, array, tensor, optional
+        The height (vertical) center coordinate in the grid system.
 
-    w0: Tensor, optional
-        The width (horizontal) center coordinate in the grid system. If not a
-        tensor, it will be converted to one.
+    w0: float, array, tensor, optional
+        The width (horizontal) center coordinate in the grid system.
 
-    scale: Tensor, optional
-        Scaling parameter to multiply the coordinates by. If not a tensor,
-        it will be converted to one.
+    scale: float, array, tensor, optional
+        Scaling parameter to multiply the coordinates by.
 
     flip_lr : boolean
         Boolean indicating to return the negative of the horizontal coordinates.
@@ -88,10 +93,10 @@ def cartesian(
 
     Returns
     -------
-    h : Tensor
+    h : array, tensor
         The height (vertical) coordinates.
 
-    w : Tensor
+    w : array, tensor
         The width (horizontal) coordinates.
 
     Examples
@@ -100,7 +105,7 @@ def cartesian(
     from galkit.spatial import grid, coordinate
 
     h, w = coordinate.cartesian(
-        grid = grid.pytorch_grid(100,100, dense=True),
+        grid = grid.pytorch_grid(100,100, tensor=True, dense=True),
         h0 = [0.5, 0.0, -0.5],
         w0 = [0.5, 0.0, -0.5],
         scale = [0.5, 1, 1.5],
@@ -109,7 +114,7 @@ def cartesian(
     )
 
     def foo(i):
-        vmax = max(h[i].abs().max(), w[i].abs().max())
+        vmax = max(abs(h[i]).max(), abs(w[i]).max())
 
         fig, ax = plt.subplots(ncols=2)
         c0 = ax[0].imshow(h[i], vmin=-vmax, vmax=vmax, cmap=plt.cm.bwr)
@@ -123,24 +128,24 @@ def cartesian(
     """
     h, w = grid
     if h0 is not None:
-        h = h - to_tensor(h0, device=h.device)
+        h = h - to_type(h0, h)
     if w0 is not None:
-        w = w - to_tensor(w0, device=h.device)
+        w = w - to_type(w0, h)
     if scale is not None:
-        scale = to_tensor(scale, device=h.device)
+        scale = to_type(scale, h)
         h = h * scale
         w = w * scale
     return -h if flip_ud else h, -w if flip_lr else w
 
 def cartesian_to_grid(
-    h       : torch.Tensor, 
-    w       : torch.Tensor, 
-    h0      : Optional[torch.Tensor] = None, 
-    w0      : Optional[torch.Tensor] = None, 
-    scale   : Optional[torch.Tensor] = None, 
+    h       : Union[numpy.ndarray, torch.Tensor], 
+    w       : Union[numpy.ndarray, torch.Tensor], 
+    h0      : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None, 
+    w0      : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None, 
+    scale   : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None, 
     flip_lr : bool = True, 
     flip_ud : bool = False
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> Union[Tuple[numpy.ndarray, numpy.ndarray], Tuple[torch.Tensor, torch.Tensor]]:
     """
     Converts cartesian coordinates to the original grid coordinates.
 
@@ -196,7 +201,7 @@ def cartesian_to_grid(
         'flip_ud': True
     }
 
-    g = grid.pytorch_grid(100,100, dense=True)
+    g = grid.pytorch_grid(100,100, tensor=True, dense=True)
     h, w = coordinate.cartesian(grid=g, **kwargs)
     h, w = coordinate.cartesian_to_grid(h=h, w=w, **kwargs)
 
@@ -214,55 +219,55 @@ def cartesian_to_grid(
     if flip_lr: w = -w
     if flip_ud: h = -h
     if scale is not None:
-        scale = to_tensor(scale, device=h.device)
+        scale = to_type(scale, h)
         h = h / scale
         w = w / scale
     if h0 is not None:
-        h = h + to_tensor(h0, device=h.device)
+        h = h + to_type(h0, h)
     if w0 is not None:
-        w = w + to_tensor(w0, device=h.device)
+        w = w + to_type(w0, h)
     return h, w
 
 def cartesian_to_polar(
-    h  : torch.Tensor, 
-    w  : torch.Tensor, 
-    pa : torch.Tensor, 
-    q  : torch.Tensor, 
-    q0 : Optional[torch.Tensor] = None,
-    p  : torch.Tensor = 2,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    h  : Union[Tuple[numpy.ndarray, numpy.ndarray], Tuple[torch.Tensor, torch.Tensor]], 
+    w  : Union[Tuple[numpy.ndarray, numpy.ndarray], Tuple[torch.Tensor, torch.Tensor]], 
+    pa : Union[float, numpy.ndarray, torch.Tensor], 
+    q  : Union[float, numpy.ndarray, torch.Tensor], 
+    q0 : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None,
+    p  : Union[float, numpy.ndarray, torch.Tensor] = 2,
+) -> Union[Tuple[numpy.ndarray, numpy.ndarray], Tuple[torch.Tensor, torch.Tensor]]:
     """
     Converts cartesian coordinates to polar coordinates.
 
     Parameters
     ----------
-    h : Tensor
+    h : array, tensor
         The height (vertical) grid coordinates.
 
-    w : Tensor
+    w : array, tensor
         The width (horizontal) grid coordinates.
 
-    pa : Tensor
+    pa : float, array, tensor
         Position angle of the semi-major axis in radians. Note that the rotation
         angle is θ_rot = -pa
 
-    q : Tensor
+    q : float, array, tensor
         Flattening parameter representing the ratio of the semi-minor to semi-
         major axis (b/a)
 
-    q0 : Tensor, optional
+    q0 : float, array, tensor, optional
         Axis ratio correction for an obolate spheroid disk. Some typical values
         are 0.13 or 0.20. Default is None.
 
-    p : Tensor
+    p : float, array, tensor
         Generalized ellipse parameter, rᵖ = |x|ᵖ + |y/q'|ᵖ. Default is 2.
 
     Returns
     -------
-    θ : Tensor
+    θ : array, tensor
         The azimuthal coordinates in radians
 
-    r : Tensor
+    r : array, tensor
         The radial coordinates
 
     Examples
@@ -272,7 +277,7 @@ def cartesian_to_polar(
     import matplotlib.pyplot as plt
 
     h, w = coordinate.cartesian(
-        grid = grid.pytorch_grid(100,100),
+        grid = grid.pytorch_grid(100,100,tensor=True),
         h0 = 0.1, w0=0.2
     )
 
@@ -292,46 +297,41 @@ def cartesian_to_polar(
 
     foo(0)
     """
-    if not isinstance(pa, torch.Tensor):
-        pa = to_tensor(pa, device=h.device)
-    x, y = rotate(h, w, angle=-pa)
-    q = q_correction(q, q0, device=h.device)
+    x, y = rotate(h, w, angle=-to_type(pa, h))
+    q = q_correction(to_type(q,x), q0)
     θ = θ_ellipse(x, y, q=q)
-    r = r_ellipse(x, y, q=q, p=p)
+    r = r_ellipse(x, y, q=q, p=to_type(p,x))
     return θ, r
 
 def polar(
-    grid    : Tuple[torch.Tensor, torch.Tensor],
-    h0      : Optional[torch.Tensor] = None, 
-    w0      : Optional[torch.Tensor] = None, 
-    scale   : Optional[torch.Tensor] = None,
+    grid    : Union[Tuple[numpy.ndarray, numpy.ndarray], Tuple[torch.Tensor, torch.Tensor]],
+    h0      : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None, 
+    w0      : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None, 
+    scale   : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None,
     flip_lr : bool = True,
     flip_ud : bool = False,
-    pa      : torch.Tensor = 0,
-    q       : torch.Tensor = 1,
-    q0      : Optional[torch.Tensor] = None,
-    p       : torch.Tensor = 2,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    pa      : Union[float, numpy.ndarray, torch.Tensor] = 0,
+    q       : Union[float, numpy.ndarray, torch.Tensor] = 1,
+    q0      : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None,
+    p       : Union[float, numpy.ndarray, torch.Tensor] = 2,
+) -> Union[Tuple[numpy.ndarray, numpy.ndarray], Tuple[torch.Tensor, torch.Tensor]]:
     """
     Generates a polar coordinate system based on the input grid and specified
     parameters.
 
     Parameters
     ----------
-    grid : Tuple[Tensor]
+    grid : Tuple[array, array], Tuple[tensor, tensor]
         Iterable containing the (h,w) coordinates of the grid system.
 
-    h0: Tensor, optional
-        The height (vertical) center coordinate in the grid system. If not a
-        tensor, it will be converted to one.
+    h0: float, array, tensor, optional
+        The height (vertical) center coordinate in the grid system.
 
-    w0: Tensor, optional
-        The width (horizontal) center coordinate in the grid system. If not a
-        tensor, it will be converted to one.
+    w0: float, array, tensor, optional
+        The width (horizontal) center coordinate in the grid system.
 
-    scale: Tensor, optional
-        Scaling parameter to multiply the coordinates by. If not a tensor,
-        it will be converted to one.
+    scale: float, array, tensor, optional
+        Scaling parameter to multiply the coordinates by.
 
     flip_lr : boolean
         Boolean indicating to return the negative of the horizontal coordinates.
@@ -344,27 +344,27 @@ def polar(
         Useful for adjusting the vertical direction of increasing values. Default
         is False.
 
-    pa : Tensor
+    pa : float, array, tensor
         Position angle of the semi-major axis in radians. Note that the rotation
         angle is θ_rot = -pa
 
-    q : Tensor
+    q : float, array, tensor
         Flattening parameter representing the ratio of the semi-minor to semi-
         major axis (b/a)
 
-    q0 : Tensor, optional
+    q0 : float, array, tensor, optional
         Axis ratio correction for an obolate spheroid disk. Some typical values
         are 0.13 or 0.20. Default is None.
 
-    p : Tensor
+    p : float, array, tensor
         Generalized ellipse parameter, rᵖ = |x|ᵖ + |y/q'|ᵖ. Default is 2.
 
     Returns
     -------
-    θ : Tensor
+    θ : array, tensor
         The azimuthal coordinates in radians
 
-    r : Tensor
+    r : array, tensor
         The radial coordinates
 
     Examples
@@ -374,7 +374,7 @@ def polar(
     import matplotlib.pyplot as plt
 
     θ, r = coordinate.polar(
-        grid = grid.pytorch_grid(100,100),
+        grid = grid.pytorch_grid(100,100,tensor=True),
         h0 = [-0.2, 0.2],
         w0 = [-0.2, 0.2],
         pa = [deg2rad(45), deg2rad(-45)],
@@ -396,45 +396,45 @@ def polar(
 
 
 def polar_to_cartesian(
-    θ  : torch.Tensor, 
-    r  : torch.Tensor, 
-    pa : torch.Tensor = 0, 
-    q  : torch.Tensor = 1,
-    q0 : Optional[torch.Tensor] = None, 
-    p  : torch.Tensor = 2
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    θ  : Union[numpy.ndarray, torch.Tensor], 
+    r  : Union[numpy.ndarray, torch.Tensor], 
+    pa : Union[float, numpy.ndarray, torch.Tensor] = 0, 
+    q  : Union[float, numpy.ndarray, torch.Tensor] = 1,
+    q0 : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None, 
+    p  : Union[float, numpy.ndarray, torch.Tensor] = 2
+) -> Union[Tuple[numpy.ndarray, numpy.ndarray], Tuple[torch.Tensor, torch.Tensor]]:
     """
     Converts polar coordinates to cartesian coordinates.
 
     Parameters
     ----------
-    θ : Tensor
+    θ : array, tensor
         The azimuthal coordinates in radians
 
-    r : Tensor
+    r : array, tensor
         The radial coordinates
 
-    pa : Tensor
+    pa : float, array, tensor
         Position angle of the semi-major axis in radians. Note that the rotation
         angle is θ_rot = -pa
 
-    q : Tensor
+    q : float, array, tensor
         Flattening parameter representing the ratio of the semi-minor to semi-
         major axis (b/a)
 
-    q0 : Tensor, optional
+    q0 : float, array, tensor, optional
         Axis ratio correction for an obolate spheroid disk. Some typical values
         are 0.13 or 0.20. Default is None.
 
-    p : Tensor
+    p : float, array, tensor
         Generalized ellipse parameter, rᵖ = |x|ᵖ + |y/q'|ᵖ. Default is 2.
 
     Returns
     -------
-    h : Tensor
+    h : array, tensor
         The height (vertical) grid coordinates.
 
-    w : Tensor
+    w : array, tensor
         The width (horizontal) grid coordinates.
 
     Examples
@@ -458,7 +458,7 @@ def polar_to_cartesian(
         'p' : 2.5
     }
 
-    h, w = coordinate.cartesian(grid = grid.pytorch_grid(100,100), **ckeys)
+    h, w = coordinate.cartesian(grid = grid.pytorch_grid(100,100,tensor=True), **ckeys)
     θ, r = coordinate.cartesian_to_polar(h=h, w=w, **pkeys)
     hp, wp = coordinate.polar_to_cartesian(θ=θ, r=r, **pkeys)
 
@@ -470,73 +470,75 @@ def polar_to_cartesian(
     fig.tight_layout()
     fig.show()
     """
-    p = to_tensor(p, device=r.device)
-    q = q_correction(q, q0, device=r.device) 
-    if not isinstance(pa, torch.Tensor) or pa.ndim != 3:
-        pa = to_tensor(pa, device=r.device)
+    is_tensor = isinstance(r, torch.Tensor)
+    sign = torch.sign if is_tensor else numpy.sign
+    sin = torch.sin if is_tensor else numpy.sin
+    cos = torch.cos if is_tensor else numpy.cos
+    tan = torch.tan if is_tensor else numpy.tan
+
+    p = to_type(p, r)
+    q = q_correction(q=to_type(q, r), q0=q0)
+    pa = to_type(pa, r)
 
     if (p == 2).all():
         y = r * torch.sin(θ) * q
         x = r * torch.cos(θ)
     else:
-        tanθ = θ.tan()             # tan(θ) = y / (q⋅x)
-        rp = r.pow(p)              # rᵖ = |x|ᵖ + |y/q|ᵖ
-        x  = (rp / (1 + tanθ.abs().pow(p))).pow(1/p) * (θ.cos().sign())
-        y  = x * q * tanθ
+        tanθ = tan(θ)              # tan(θ) = y / (q⋅x)
+        rp = r**p                  # rᵖ = |x|ᵖ + |y/q|ᵖ
+        x = (rp / (1 + abs(tanθ)**p))**(1/p) * sign(cos(θ))
+        y = x * q * tanθ
 
     x, y = rotate(x, y, angle=pa)
     return x, y
 
 def polar_to_grid(
-    θ       : torch.Tensor, 
-    r       : torch.Tensor, 
-    pa      : torch.Tensor = 0, 
-    q       : torch.Tensor = 1,
-    q0      : Optional[torch.Tensor] = None,
-    p       : torch.Tensor = 2, 
-    h0      : Optional[torch.Tensor] = None, 
-    w0      : Optional[torch.Tensor] = None, 
-    scale   : Optional[torch.Tensor] = None, 
+    θ       : Union[numpy.ndarray, torch.Tensor], 
+    r       : Union[numpy.ndarray, torch.Tensor], 
+    pa      : Union[float, numpy.ndarray, torch.Tensor] = 0, 
+    q       : Union[float, numpy.ndarray, torch.Tensor] = 1,
+    q0      : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None,
+    p       : Union[float, numpy.ndarray, torch.Tensor] = 2, 
+    h0      : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None, 
+    w0      : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None, 
+    scale   : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None, 
     flip_lr : torch.Tensor = True, 
     flip_ud : torch.Tensor = False,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> Union[Tuple[numpy.ndarray, numpy.ndarray], Tuple[torch.Tensor, torch.Tensor]]:
     """
     Converts polar coordinates to the original grid coordinates.
 
     Parameters
     ----------
-    θ : Tensor
+    θ : array, tensor
         The azimuthal coordinates in radians
 
-    r : Tensor
+    r : array, tensor
         The radial coordinates
 
-    pa : Tensor
+    pa : float, arrray, tensor
         Position angle of the semi-major axis in radians. Note that the rotation
         angle is θ_rot = -pa
 
-    q : Tensor
+    q : float, arrray, tensor
         Flattening parameter representing the ratio of the semi-minor to semi-
         major axis (b/a)
 
-    q0 : Tensor, optional
+    q0 : float, arrray, tensor, optional
         Axis ratio correction for an obolate spheroid disk. Some typical values
         are 0.13 or 0.20. Default is None.
 
-    p : Tensor
+    p : float, arrray, tensor
         Generalized ellipse parameter, rᵖ = |x|ᵖ + |y/q'|ᵖ. Default is 2.
 
-    h0: Tensor, optional
-        The height (vertical) center coordinate in the grid system. If not a
-        tensor, it will be converted to one.
+    h0: float, arrray, tensor, optional
+        The height (vertical) center coordinate in the grid system.
 
-    w0: Tensor, optional
-        The width (horizontal) center coordinate in the grid system. If not a
-        tensor, it will be converted to one.
+    w0: float, arrray, tensor, optional
+        The width (horizontal) center coordinate in the grid system. 
 
-    scale: Tensor, optional
-        Scaling parameter to multiply the coordinates by. If not a tensor,
-        it will be converted to one.
+    scale: float, arrray, tensor, optional
+        Scaling parameter to multiply the coordinates by.
 
     flip_lr : boolean
         Boolean indicating to return the negative of the horizontal coordinates.
@@ -551,10 +553,10 @@ def polar_to_grid(
 
     Returns
     -------
-    h : Tensor
+    h : array, tensor
         The height (vertical) grid coordinates.
 
-    w : Tensor
+    w : array, tensor
         The width (horizontal) grid coordinates.
 
     Examples
@@ -595,11 +597,11 @@ def polar_to_grid(
     return h, w
 
 def θ_ellipse(
-    x  : torch.Tensor, 
-    y  : torch.Tensor, 
-    q  : torch.Tensor = 1,
-    q0 : Optional[torch.Tensor] = None
-) -> torch.Tensor:
+    x  : Union[numpy.ndarray, torch.Tensor], 
+    y  : Union[numpy.ndarray, torch.Tensor], 
+    q  : Union[float, numpy.ndarray, torch.Tensor] = 1,
+    q0 : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None
+) -> Union[numpy.ndarray, torch.Tensor]:
     """
     Returns the azimuthal coordinates in radians, which is defined as
 
@@ -609,23 +611,23 @@ def θ_ellipse(
 
     Parameters
     ----------
-    x : Tensor
+    x : array, tensor
         The coordinate along the semi-major axis
 
-    y : Tensor
+    y : array, tensor
         The coordinate along the semi-minor axis
 
-    q : Tensor
+    q : float, array, tensor
         Flattening parameter representing the ratio of the semi-minor to semi-
         major axis (b/a).
 
-    q0 : Tensor, optional
+    q0 : float, array, tensor, optional
         Axis ratio correction for an obolate spheroid disk. Some typical values
         are 0.13 or 0.20. Default is None.
 
     Returns
     -------
-    θ : Tensor
+    θ : array, tensor
         The azimuthal coordinates in radians
 
     Examples
@@ -661,15 +663,16 @@ def θ_ellipse(
 
     foo(0)
     """
-    return torch.atan2(y, q_correction(q, q0, device=x.device)*x)
+    atan2 = torch.atan2 if isinstance(x,torch.Tensor) else numpy.arctan2
+    return atan2(y, q_correction(to_type(q,x), q0)*x)
 
 def r_ellipse(
-    x   : torch.Tensor, 
-    y   : torch.Tensor, 
-    q   : torch.Tensor = 1,
-    q0  : Optional[torch.Tensor] = None,
-    p   : torch.Tensor = 2,
-) -> torch.Tensor:
+    x   : Union[numpy.ndarray, torch.Tensor], 
+    y   : Union[numpy.ndarray, torch.Tensor], 
+    q   : Union[float, numpy.ndarray, torch.Tensor] = 1,
+    q0  : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None,
+    p   : Union[float, numpy.ndarray, torch.Tensor] = 2,
+) -> Union[numpy.ndarray, torch.Tensor]:
     """
     Returns the radial coordinates, which is defined as
 
@@ -679,27 +682,26 @@ def r_ellipse(
 
     Parameters
     ----------
-    x : Tensor
+    x : array, tensor
         The coordinate along the semi-major axis
 
-    y : Tensor
+    y : array, tensor
         The coordinate along the semi-minor axis
 
-    q : Tensor
+    q : float, array, tensor
         Flattening parameter representing the ratio of the semi-minor to semi-
         major axis (b/a).
 
-    q0 : Tensor, optional
+    q0 : float, array, tensor, optional
         Axis ratio correction for an obolate spheroid disk. Some typical values
         are 0.13 or 0.20. Default is None.
 
-    p : Tensor
-        Generalized ellipse parameter, rᵖ = |x|ᵖ + |y/q|ᵖ. If not a tensor, it
-        will be converted to one.
+    p : float, array, tensor
+        Generalized ellipse parameter, rᵖ = |x|ᵖ + |y/q|ᵖ.
 
     Returns
     -------
-    r : Tensor
+    r : array, tensor
         The radial coordinates
 
     Examples
@@ -736,39 +738,37 @@ def r_ellipse(
     fig.tight_layout()
     fig.show()
     """
-    p = to_tensor(p, device=x.device)
-    q = q_correction(q, q0, device=x.device)
-    return (                            # For backpropagation issues
-        safe_divisor(x).abs().pow(p) + \
-        safe_divisor(y).abs().div(q).pow(p)
-    ).pow(1/p)
+    p = to_type(p, x)
+    q = q_correction(q=to_type(q, x), q0=q0)
+
+    return ( abs(safe_divisor(x))**(p) + abs(safe_divisor(y)/q)**p )**(1/p)
 
 def rotate(
-    x     : torch.Tensor, 
-    y     : torch.Tensor, 
-    angle : torch.Tensor
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    x     : Union[numpy.ndarray, torch.Tensor], 
+    y     : Union[numpy.ndarray, torch.Tensor], 
+    angle : Union[float, numpy.ndarray, torch.Tensor]
+) -> Union[Tuple[numpy.ndarray, numpy.ndarray], Tuple[torch.Tensor, torch.Tensor]]:
     """
     Rotates (x,y) coordinates by the angle `angle`. When dealing with position angles,
     angle = -pa.
 
     Parameters
     ----------
-    x : Tensor
+    x : array, tensor
         The coordinate along the semi-major axis
 
-    y : Tensor
+    y : array, tensor
         The coordinate along the semi-minor axis
 
-    angle : Tensor
+    angle : float, array, tensor
         Angle to rotate by.
 
     Returns
     -------
-    x' : array
+    x' : array, tensor
         The x-coordinates in the rotated frame
 
-    y' : array
+    y' : array, tensor
         The y-coordinates in the rotated frame
 
     Examples
@@ -788,19 +788,23 @@ def rotate(
     fig.tight_layout()   
     fig.show()
     """
-    if not isinstance(angle, torch.Tensor) or angle.ndim != 3:
-        angle = to_tensor(angle, device=x.device)
-    cos = angle.cos()
-    sin = angle.sin()
+    is_tensor = isinstance(x, torch.Tensor)
+
+    # Allow for a radial dependency
+    if not isinstance(angle, (numpy.ndarray, torch.Tensor)) or angle.ndim != 3:
+        angle = to_type(angle, x)
+
+    cos = (torch.cos if is_tensor else numpy.cos)(angle)
+    sin = (torch.sin if is_tensor else numpy.sin)(angle)
+
     x_new = x*cos - y*sin
     y_new = x*sin + y*cos
     return x_new, y_new
 
 def q_correction(
-    q  : torch.Tensor,
-    q0 : Optional[torch.Tensor] = None,
-    device : Optional[torch.device] = None,
-) -> torch.Tensor:
+    q  : Union[float, numpy.ndarray, torch.Tensor],
+    q0 : Optional[Union[float, numpy.ndarray, torch.Tensor]] = None,
+) -> Union[float, numpy.ndarray, torch.Tensor]:
     """
     Computes the ellipsoidally corrected value
 
@@ -810,20 +814,17 @@ def q_correction(
 
     Parameters
     ----------
-    q : Tensor
+    q : Array, Float, Tensor
         Flattening parameter representing the ratio of the semi-minor to semi-
         major axis (b/a).
 
-    q0 : Tensor, optional
+    q0 : Array, Float, Tensor, optional
         Axis ratio correction for an obolate spheroid disk. Some typical values
         are 0.13 or 0.20. Default is `None`, so no correction is applied.
 
-    device : torch.device, optional
-        The device to generate the data on. Only used if q is not a tensor.
-
     Returns
     -------
-    q' : float
+    q' : Array, Float, Tensor
         The ellipsoidally corrected inclination parameter such that cos(i) = q'
         holds.
 
@@ -838,11 +839,7 @@ def q_correction(
     q = q_correction(b/a, q0)
     print(q)
     """
-    if not isinstance(q, torch.Tensor) or q.ndim != 3:
-        q = to_tensor(q, device=device)
     if q0 is not None:
-        if not isinstance(q0, torch.Tensor):
-            q0 = to_tensor(q0, device=q.device)
-        q0_sq = q0.pow(2)
-        q  = (q.pow(2) - q0_sq).div(1 - q0_sq).sqrt()
+        q0_sq = to_type(q0, q, view=None if isinstance(q,(int,float)) else q.shape)**2
+        q = ((q**2 - q0_sq) / (1 - q0_sq))**0.5
     return q
