@@ -290,7 +290,7 @@ def pixel_grid(
     print(x.shape, y.shape, z.shape)
     """
     arange = torch.arange if tensor else numpy.arange
-    kwargs = {'device': device} if tensor else {}
+    kwargs = {'device': device, 'dtype': torch.float32} if tensor else {}
     shape = tuple(flatten(shape))
     grid  = tuple(arange(s, **kwargs) for s in shape)
     return _parse_grid(grid, dense=dense)
