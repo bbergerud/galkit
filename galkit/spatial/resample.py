@@ -12,13 +12,13 @@ reproject(input, h0_old, w0_old, pa_old, q_old, q0_old, p_old,
     Reprojects a tensor from one coordinate system to another. Useful for
     deprojecting galaxy images.
 
-to_cartesian(input, h0, w0, pa, q, q0, p, scale, flip_lr, flip_ud,
+to_cartesian(input, θ, r, h0, w0, pa, q, q0, p, scale, flip_lr, flip_ud,
         transform, untransform, x_min, x_max, return_grid, dense_grid,
         alpha_shift, theta_shift, mode)
     Reprojects the input tensor from a polar coordinate system to a cartesian
     coordinate system.
 
-to_polar(input, h0, w0, pa, q, q0, p, scale, flip_lr, flip_ud,
+to_polar(input, θ, r, h0, w0, pa, q, q0, p, scale, flip_lr, flip_ud,
         transform, untransform, x_min, x_max, return_grid, dense_grid,
         alpha_shift, theta_shift, mode)
     Reprojects the input tensor from a cartesian coordinate system to a polar
@@ -177,6 +177,8 @@ def transform_log(eps:float=0.01):
 
 def to_polar(
     input       : torch.Tensor,
+    θ           : Optional[torch.Tensor] = None,
+    r           : Optional[torch.Tensor] = None,
     h0          : Optional[torch.Tensor] = None,
     w0          : Optional[torch.Tensor] = None,
     pa          : torch.Tensor = 0,
@@ -207,6 +209,12 @@ def to_polar(
     ----------
     input : Tensor
         The input tensor to resample.
+
+    θ : Tensor, optional
+        The azimuthal coordinates. If these are not passed, then they are generated.
+
+    r : Tensor, optional
+        The radial coordinates. If these are not passed, then they are generated.
 
     h0: Tensor
         The height (vertical) center coordinate in the pytorch grid system. If not a
@@ -312,8 +320,8 @@ def to_polar(
 
     c_imag = (-r).exp().unsqueeze(0)
     p_imag1 = resample.to_polar(c_imag, theta_shift=0, **geom)
-    p_imag2 = resample.to_polar(c_imag, theta_shift=pi/4, **geom, **resample.transform_arcsinh(1.0))
-    p_imag3 = resample.to_polar(c_imag, theta_shift=pi/2, **geom, **resample.transform_log(0.01))
+    p_imag2 = resample.to_polar(c_imag, **geom, **resample.transform_arcsinh(1.0))
+    p_imag3 = resample.to_polar(c_imag, **geom, **resample.transform_log(0.01))
 
     fig, ax = plt.subplots(ncols=2, nrows=2)
     ax[0,0].imshow(c_imag.squeeze())
@@ -339,10 +347,11 @@ def to_polar(
     # ==========================================================================
     # Generate the azimuthal and radial coordinates
     # ==========================================================================
-    θ, r = coordinate.polar(
-        grid=grid.pytorch_grid(input.shape[-2:], device=input.device),
-        **ckeys, **pkeys
-    )
+    if (θ is None) or (r is None):
+        θ, r = coordinate.polar(
+            grid=grid.pytorch_grid(input.shape[-2:], device=input.device),
+            **ckeys, **pkeys
+        )
 
     # ==========================================================================
     # Generate the azimuthal grid for sampling. Since -π == π, the latter is
@@ -399,6 +408,8 @@ def to_polar(
 
 def to_cartesian(
     input       : torch.Tensor,
+    θ           : Optional[torch.Tensor] = None,
+    r           : Optional[torch.Tensor] = None,
     h0          : Optional[Union[float,torch.Tensor]] = None,
     w0          : Optional[Union[float,torch.Tensor]] = None,
     pa          : Union[float,torch.Tensor] = 0,
@@ -425,6 +436,12 @@ def to_cartesian(
     ----------
     input : Tensor
         The input tensor to resample.
+
+    θ : Tensor, optional
+        The azimuthal coordinates. If these are not passed, then they are generated.
+
+    r : Tensor, optional
+        The radial coordinates. If these are not passed, then they are generated.
 
     h0: Tensor
         The height (vertical) center coordinate in the pytorch grid system. If not a
@@ -551,9 +568,11 @@ def to_cartesian(
     # ==========================================================================
     # Generate the azimuthal and radial coordinates
     # ==========================================================================
-    θ, r = coordinate.polar(
-        grid=grid.pytorch_grid(input.shape[-2:], device=input.device),
-        **ckeys, **pkeys)
+    if (θ is None) or (r is None):
+        θ, r = coordinate.polar(
+            grid=grid.pytorch_grid(input.shape[-2:], device=input.device),
+            **ckeys, **pkeys
+        )
 
     if alpha_shift is not None:
         alpha_shift = to_tensor(alpha_shift, device=input.device)
