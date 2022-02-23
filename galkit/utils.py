@@ -36,7 +36,7 @@ to_tensor(input, device, view)
 unravel_index(index, shape)
     Unravels the index location based on the provided shape of the tensor.
 """
-
+from __future__ import annotations
 import os, sys
 import numpy
 import torch
@@ -62,7 +62,7 @@ class FunctionWrapper:
         Interface to the function __call__ method. The arguments
         stored in the attribute `kwargs` are alse passed.
     """
-    def __init__(self, function:callable, **kwargs):
+    def __init__(self, function:Union[callable,FunctionWrapper], **kwargs):
         """
         Parameters
         ----------
@@ -73,8 +73,12 @@ class FunctionWrapper:
             Additional keyword arguments to pass into the function
             upon calling.
         """
-        self.function = function
-        self.kwargs = kwargs
+        if isinstance(function, FunctionWrapper):
+            self.function = function.function
+            self.kwargs = {**kwargs, **function.kwargs}
+        else:
+            self.function = function
+            self.kwargs = kwargs
     
     def __call__(self, *args, **kwargs):
         """
