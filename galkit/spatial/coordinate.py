@@ -47,11 +47,10 @@ from typing import Optional, Tuple, Union
 from ..utils import safe_divisor
 
 def to_type(input, target, view=(-1,1,1)):
-    dtype = None if isinstance(target, (int,float)) else target.dtype
     if isinstance(target, torch.Tensor):
-        output = torch.as_tensor(input, dtype=dtype, device=target.device)
+        output = torch.as_tensor(input, dtype=torch.float32, device=target.device)
     else:
-        output = numpy.asarray(input, dtype=dtype)
+        output = numpy.asarray(input, dtype='float')
     return output if view is None else output.reshape(view)
 
 def cartesian(
@@ -664,7 +663,7 @@ def θ_ellipse(
     foo(0)
     """
     atan2 = torch.atan2 if isinstance(x,torch.Tensor) else numpy.arctan2
-    return atan2(y, q_correction(to_type(q,x), q0)*x)
+    return atan2(safe_divisor(y), safe_divisor(q_correction(to_type(q,x), q0)*x))
 
 def r_ellipse(
     x   : Union[numpy.ndarray, torch.Tensor], 
