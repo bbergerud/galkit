@@ -47,10 +47,11 @@ from typing import Optional, Tuple, Union
 from ..utils import safe_divisor
 
 def to_type(input, target, view=(-1,1,1)):
+    dtype = None if isinstance(target, (int,float)) else target.dtype
     if isinstance(target, torch.Tensor):
-        output = torch.as_tensor(input, dtype=torch.float32, device=target.device)
+        output = torch.as_tensor(input, dtype=dtype, device=target.device)
     else:
-        output = numpy.asarray(input, dtype='float')
+        output = numpy.asarray(input, dtype=dtype)
     return output if view is None else output.reshape(view)
 
 def cartesian(
