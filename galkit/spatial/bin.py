@@ -13,7 +13,7 @@ def group_by(groups, values, reducer:Optional[callable] = None):
         mask = groups == u
         subvalues = values[mask]
         if reducer is not None:
-            subvalues = reducer(values)
+            subvalues = reducer(subvalues)
         else:
             subvalues = (torch if is_tensor else numpy).nanmean(subvalues)
         collection[u] = subvalues
