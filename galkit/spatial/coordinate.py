@@ -481,8 +481,8 @@ def polar_to_cartesian(
     pa = to_type(pa, r)
 
     if (p == 2).all():
-        y = r * torch.sin(θ) * q
-        x = r * torch.cos(θ)
+        y = r * sin(θ) * q
+        x = r * cos(θ)
     else:
         tanθ = tan(θ)              # tan(θ) = y / (q⋅x)
         rp = r**p                  # rᵖ = |x|ᵖ + |y/q|ᵖ
