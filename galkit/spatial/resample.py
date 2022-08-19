@@ -14,13 +14,13 @@ reproject(input, h0_old, w0_old, pa_old, q_old, q0_old, p_old,
 
 to_cartesian(input, θ, r, h0, w0, pa, q, q0, p, scale, flip_lr, flip_ud,
         transform, untransform, x_min, x_max, return_grid, dense_grid,
-        alpha_shift, theta_shift, mode)
+        alpha_shift, theta_shift, mode, repeat)
     Reprojects the input tensor from a polar coordinate system to a cartesian
     coordinate system.
 
 to_polar(input, θ, r, h0, w0, pa, q, q0, p, scale, flip_lr, flip_ud,
         transform, untransform, x_min, x_max, return_grid, dense_grid,
-        alpha_shift, theta_shift, mode)
+        alpha_shift, theta_shift, mode, repeat)
     Reprojects the input tensor from a cartesian coordinate system to a polar
     coordinate system. The first spatial dimension (height) corresponds to the
     azimuthal coordinate and the second spatial dimension (width) the radial
@@ -198,6 +198,7 @@ def to_polar(
     theta_shift : Optional[torch.Tensor] = None,
     eps         : float = 1e-4,
     mode        : str = 'bilinear',
+    repeat      : bool = False
 ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
     """
     Reprojects the input tensor from a cartesian coordinate system to a polar
@@ -294,6 +295,9 @@ def to_polar(
         Interpolation mode. Can be: 'bilinear', 'nearest', or 'bicubic'. Default
         is 'bilinear'.
 
+    repeat : bool
+        Boolean indicating whether to include ±π at the boundaries or just one.
+
     Returns
     -------
     output : Tensor
@@ -358,8 +362,11 @@ def to_polar(
     # removed to prevent a duplicate. This grid will correspond to the height
     # coordinate.
     # ==========================================================================
-    θ_grid = torch.linspace(-pi, pi, input.size(-2)+1, device=input.device)[:-1].view(1,-1,1)
- 
+    if repeat:
+        θ_grid = torch.linspace(-pi, pi, input.size(-2), device=input.device).view(1,-1,1)
+    else:
+        θ_grid = torch.linspace(-pi, pi, input.size(-2)+1, device=input.device)[:-1].view(1,-1,1)
+
     # ==========================================================================
     # Generate the radial grid for resampling. This grid will correspond to the
     # width coordinate.
@@ -427,6 +434,7 @@ def to_cartesian(
     theta_shift : Optional[Union[float,torch.Tensor]] = None,
     eps         : Optional[float] = 1e-4,
     mode        : str = 'bilinear',
+    repeat      : bool = False,
 ) -> torch.Tensor:
     """
     Reprojects the input tensor from a polar coordinate system to a cartesian
@@ -524,6 +532,9 @@ def to_cartesian(
         Interpolation mode. Can be: 'bilinear', 'nearest', or 'bicubic'. Default
         is 'bilinear'.
 
+    repeat : bool
+        Boolean indicating whether to include ±π at the boundaries or just one.
+
     Returns
     -------
     output : Tensor
@@ -585,9 +596,10 @@ def to_cartesian(
 
     # ==========================================================================
     # For grid sampling purposes, pad the azimuth so that the ends correspond to
-    # -π and +π radians
+    # -π and +π radians if the input doesn't repeat at the end
     # ==========================================================================
-    input = F.pad(input, (0,0,0,1), mode='circular')
+    if not repeat:
+        input = F.pad(input, (0,0,0,1), mode='circular')
 
     # ==========================================================================
     # Calculate the location of the (θ,r) coordinates in the polar image. Note
